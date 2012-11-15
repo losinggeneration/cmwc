@@ -3,7 +3,7 @@ package core
 import (
   crand "crypto/rand"
   "fmt"
-  "github.com/runningwild/stringz"
+  "github.com/MobRulesGames/stringz"
   "math/big"
   "math/rand"
   "time"
