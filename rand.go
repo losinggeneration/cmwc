@@ -15,11 +15,11 @@
 //     a = 4288278103, period = 287781472008404992
 //
 //     R=2 (lb2_r=1)
-//     a = 4287701437, period = 1235845798012744974758576128 
-//     a = 4289233213, period = 1236287302385405139166953472 
-//     a = 4289388097, period = 1236331944658985020888711168 
-//     a = 4290242227, period = 1236578130870167482440613888 
-//     a = 4292893333, period = 1237342260149765542355402752 
+//     a = 4287701437, period = 1235845798012744974758576128
+//     a = 4289233213, period = 1236287302385405139166953472
+//     a = 4289388097, period = 1236331944658985020888711168
+//     a = 4290242227, period = 1236578130870167482440613888
+//     a = 4292893333, period = 1237342260149765542355402752
 //
 //     R=4 (lb2_r=2)
 //     a = 4250569903, period = 22599906052433497083007582018186157588859584512
@@ -66,96 +66,97 @@
 package cmwc
 
 import (
-  "bytes"
-  "encoding/binary"
-  "fmt"
-  "github.com/MobRulesGames/cmwc/core"
-  "math/big"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"math/big"
+
+	"github.com/MobRulesGames/cmwc/core"
 )
 
 type Cmwc struct {
-  cmwc *core.CMWC32
+	cmwc *core.CMWC32
 }
 
 // Creates a Cmwc RNG with (A, B, R) = (a, 2^32, 1<<lb2_r)
 func MakeCmwc(a, lb2_r uint32) *Cmwc {
-  return &Cmwc{core.MakeCMWC32(a, lb2_r)}
+	return &Cmwc{core.MakeCMWC32(a, lb2_r)}
 }
 
 // Creates a Cmwc RNG with a very long period
 func MakeGoodCmwc() *Cmwc {
-  return &Cmwc{core.MakeCMWC32(3945340957, 5)}
+	return &Cmwc{core.MakeCMWC32(3945340957, 5)}
 }
 
 // Int63 returns a non-negative pseudo-random 63-bit integer as an int64.
 func (c *Cmwc) Int63() int64 {
-  return c.cmwc.Int63()
+	return c.cmwc.Int63()
 }
 
 // Seed uses the provided seed value to initialize the generator to a
 // deterministic state.
 func (c *Cmwc) Seed(seed int64) {
-  c.cmwc.Seed(seed)
+	c.cmwc.Seed(seed)
 }
 
 // Uses crypto.Reader to seed the generator.
 func (c *Cmwc) SeedWithDevRand() {
-  c.cmwc.SeedWithDevRand()
+	c.cmwc.SeedWithDevRand()
 }
 
 func (c *Cmwc) GobEncode() ([]byte, error) {
-  buf := bytes.NewBuffer(make([]byte, 4*(len(c.cmwc.Q)+4))[0:0])
-  binary.Write(buf, binary.LittleEndian, c.cmwc.A)
-  binary.Write(buf, binary.LittleEndian, c.cmwc.C)
-  binary.Write(buf, binary.LittleEndian, c.cmwc.N)
-  binary.Write(buf, binary.LittleEndian, uint32(len(c.cmwc.Q)))
-  err := binary.Write(buf, binary.LittleEndian, c.cmwc.Q)
-  if err != nil {
-    return nil, err
-  }
-  return buf.Bytes(), nil
+	buf := bytes.NewBuffer(make([]byte, 4*(len(c.cmwc.Q)+4))[0:0])
+	binary.Write(buf, binary.LittleEndian, c.cmwc.A)
+	binary.Write(buf, binary.LittleEndian, c.cmwc.C)
+	binary.Write(buf, binary.LittleEndian, c.cmwc.N)
+	binary.Write(buf, binary.LittleEndian, uint32(len(c.cmwc.Q)))
+	err := binary.Write(buf, binary.LittleEndian, c.cmwc.Q)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (c *Cmwc) GobDecode(data []byte) error {
-  c.cmwc = &core.CMWC32{}
-  buf := bytes.NewBuffer(data)
-  binary.Read(buf, binary.LittleEndian, &c.cmwc.A)
-  binary.Read(buf, binary.LittleEndian, &c.cmwc.C)
-  binary.Read(buf, binary.LittleEndian, &c.cmwc.N)
-  var length uint32
-  err := binary.Read(buf, binary.LittleEndian, &length)
-  if err != nil {
-    return nil
-  }
-  c.cmwc.Q = make([]uint32, length)
-  err = binary.Read(buf, binary.LittleEndian, c.cmwc.Q)
-  c.cmwc.R_mask = uint32(len(c.cmwc.Q)) - 1
-  return err
+	c.cmwc = &core.CMWC32{}
+	buf := bytes.NewBuffer(data)
+	binary.Read(buf, binary.LittleEndian, &c.cmwc.A)
+	binary.Read(buf, binary.LittleEndian, &c.cmwc.C)
+	binary.Read(buf, binary.LittleEndian, &c.cmwc.N)
+	var length uint32
+	err := binary.Read(buf, binary.LittleEndian, &length)
+	if err != nil {
+		return nil
+	}
+	c.cmwc.Q = make([]uint32, length)
+	err = binary.Read(buf, binary.LittleEndian, c.cmwc.Q)
+	c.cmwc.R_mask = uint32(len(c.cmwc.Q)) - 1
+	return err
 }
 
 func (c *Cmwc) OverwriteWith(c2 *Cmwc) {
-  if len(c.cmwc.Q) != len(c2.cmwc.Q) {
-    panic("Cannot overwrite with a generator with a different size.")
-  }
-  c.cmwc.A = c2.cmwc.A
-  c.cmwc.C = c2.cmwc.C
-  c.cmwc.N = c2.cmwc.N
-  for i := range c.cmwc.Q {
-    c.cmwc.Q[i] = c2.cmwc.Q[i]
-  }
+	if len(c.cmwc.Q) != len(c2.cmwc.Q) {
+		panic("Cannot overwrite with a generator with a different size.")
+	}
+	c.cmwc.A = c2.cmwc.A
+	c.cmwc.C = c2.cmwc.C
+	c.cmwc.N = c2.cmwc.N
+	for i := range c.cmwc.Q {
+		c.cmwc.Q[i] = c2.cmwc.Q[i]
+	}
 }
 
 func main() {
-  var a, b, r uint64
-  b = uint64(1 << 32)
-  r = uint64(1 << 1)
-  var p *big.Int
-  for i := 0; i < 10000; i++ {
-    a, p = core.GenerateRandomParams(b, r)
-    // fmt.Printf("CMWC(%v, %v, %v) -> %v\n", a, b, r, p)
-    fmt.Printf("%v %v\n", p, a)
-    // c := core.MakeSlowCMWC(uint64(a), uint64(b), uint64(r))
-    // p2 := core.Check(c, int(p.Int64()+1234))
-    // fmt.Printf("Period: %v %v\n", p, p2)
-  }
+	var a, b, r uint64
+	b = uint64(1 << 32)
+	r = uint64(1 << 1)
+	var p *big.Int
+	for i := 0; i < 10000; i++ {
+		a, p = core.GenerateRandomParams(b, r)
+		// fmt.Printf("CMWC(%v, %v, %v) -> %v\n", a, b, r, p)
+		fmt.Printf("%v %v\n", p, a)
+		// c := core.MakeSlowCMWC(uint64(a), uint64(b), uint64(r))
+		// p2 := core.Check(c, int(p.Int64()+1234))
+		// fmt.Printf("Period: %v %v\n", p, p2)
+	}
 }
